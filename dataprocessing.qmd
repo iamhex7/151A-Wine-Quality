@@ -1,0 +1,17 @@
+
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+
+red <- read.csv("data/winequality-red.csv", sep = ";") |> mutate(type = "0")
+white <- read.csv("data/winequality-white.csv", sep = ";") |> mutate(type = "1")
+
+```
+
+
+```{r}
+wine <- bind_rows(red, white) 
+colnames(wine) <- str_replace_all(colnames(wine), pattern = "\\.", "_")
+wine|> write_csv("data/wine.csv")
+```
