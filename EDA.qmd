@@ -1,0 +1,138 @@
+
+```{r}
+library(tidyverse)
+
+wine <- read_csv("data/wine.csv")
+wine <- wine |>
+  mutate(
+    type = factor(
+      type,
+      levels = c(0, 1),
+      labels = c("red", "white")
+    )
+  )
+```
+
+
+```{r}
+ggplot(wine, aes(x = quality)) +
+  geom_histogram(
+    binwidth = 1,          # 每 1 分一格，质量评分本来就是整数
+    boundary = 0.5,
+    closed = "right",
+    color = "black"
+  ) +
+  labs(
+    title = "Histogram of wine quality",
+    x = "quality",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+ggplot(wine, aes(y = quality)) +
+  geom_boxplot() +
+  labs(
+    title = "Boxplot of wine quality",
+    y = "quality"
+  ) +
+  theme_minimal()
+```
+
+
+```{r}
+
+#######################################################
+## 2. predictors 的分布与相互关系
+#######################################################
+
+# 这一步先把所有“化学指标”的名字列出来，方便后面成批处理
+# （注意：这里不包括 quality 和 type）
+predictor_names <- c(
+  "fixed_acidity",
+  "volatile_acidity",
+  "citric_acid",
+  "residual_sugar",
+  "chlorides",
+  "free_sulfur_dioxide",
+  "total_sulfur_dioxide",
+  "density",
+  "pH",
+  "sulphates",
+  "alcohol"
+)
+
+# 2(a) 把数据从“宽格式”转换成长格式，便于用 facet_wrap 一次画出所有 histogram
+wine_long <- wine |>
+  pivot_longer(
+    cols = all_of(predictor_names),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# 2(b) 为每个化学指标画直方图，检查是否重尾、是否有必要 log-transform
+ggplot(wine_long, aes(x = value)) +
+  geom_histogram(bins = 30, color = "black") +
+  facet_wrap(~ variable, scales = "free") +
+  labs(
+    title = "Histograms of chemical predictors",
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_minimal()
+
+# 2(c) 计算质量和所有预测变量之间的相关系数矩阵，用于检查共线性和潜在线性关系
+num_vars <- wine |>
+  select(all_of(c(predictor_names, "quality")))
+
+# 得到相关系数矩阵
+cor_mat <- cor(num_vars)
+
+# 打印一个保留两位小数的相关系数矩阵，方便在 Console 里查看
+round(cor_mat, 2)
+
+# 2(d) 用 base R 的 pairs() 画出散点图矩阵，直观查看线性关系和共线性
+# 注意：图可能比较大，可以在 RStudio 里放大 Plot 窗口观看
+pairs(num_vars,
+      main = "Pairs plot of quality and predictors")
+
+# 2(e) 针对一个典型候选变量 alcohol，画出它跟 quality 的散点图和线性拟合线，
+#      用来初步判断二者关系是否接近线性
+ggplot(wine, aes(x = alcohol, y = quality)) +
+  geom_point(alpha = 0.3) +                   # alpha 调低一点避免点太拥挤
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(
+    title = "Relationship between alcohol and quality",
+    x = "alcohol",
+    y = "quality"
+  ) +
+  theme_minimal()
+```
+
+
+```{r}
+
+#######################################################
+## 3. type 与 quality 的关系
+#######################################################
+
+# 3(a) 画箱线图：quality ~ type，比较 red 和 white 两类酒的质量评分分布
+ggplot(wine, aes(x = type, y = quality)) +
+  geom_boxplot() +
+  labs(
+    title = "Quality by wine type (red vs white)",
+    x = "Wine type",
+    y = "quality"
+  ) +
+  theme_minimal()
+
+# 3(b) 计算每种 type 的平均质量、标准差和样本量，用数值结果补充对箱线图的解释
+wine |>
+  group_by(type) |>
+  summarise(
+    mean_quality = mean(quality),
+    sd_quality   = sd(quality),
+    n            = n(),
+    .groups = "drop"
+  )
+
+```

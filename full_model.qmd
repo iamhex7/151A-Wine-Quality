@@ -1,0 +1,51 @@
+
+```{r}
+############################################################
+## Step 2：拟合 Baseline Full OLS Model（模型 A）
+############################################################
+
+# 这一步再次确认 type 已经被转成 factor（如果已做可省略）
+wine <- wine |>
+  mutate(
+    type = factor(type, levels = c("red", "white"))
+  )
+
+# 这一步拟合 full model，包含所有 11 个 predictor + type
+mod_full <- lm(
+  quality ~ fixed_acidity +
+    volatile_acidity +
+    citric_acid +
+    residual_sugar +
+    chlorides +
+    free_sulfur_dioxide +
+    total_sulfur_dioxide +
+    density +
+    pH +
+    sulphates +
+    alcohol +
+    type,
+  data = wine
+)
+
+# 查看模型的完整 summary（系数、显著性、调整后R² 等）
+summary(mod_full)
+
+```
+
+
+```{r}
+############################################################
+## 提取 Step 2 要记录的指标：Adjusted R², AIC, BIC
+############################################################
+
+# 调整后的 R²
+adj_R2 <- summary(mod_full)$adj.r.squared
+adj_R2
+
+# AIC
+AIC(mod_full)
+
+# BIC
+BIC(mod_full)
+
+```
