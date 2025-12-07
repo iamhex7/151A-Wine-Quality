@@ -1,0 +1,35 @@
+
+```{r}
+library(ggfortify)
+autoplot(mD, which = 1)
+autoplot(mD, which = 2)
+autoplot(mD, which = 4:5)
+
+```
+
+Model Diagnostics Summary (Bullet Points)
+Residuals vs Fitted
+
+No strong curvature → linearity assumption satisfied.
+
+Mild heteroscedasticity visible → expected due to discrete 1–10 quality ratings; not severe enough to affect inference.
+
+Normal Q–Q Plot
+
+Central residuals align well with theoretical normal quantiles.
+
+Slight tail deviations → acceptable given large sample size (n > 6000) and CLT-based inference.
+
+No evidence of severe non-normality.
+
+Cook’s Distance
+
+All Cook’s D values are very small (< 0.03), far below conventional influence thresholds.
+
+No influential observations detected.
+
+Residuals vs Leverage
+
+No points fall beyond Cook’s distance contours.
+
+Leverage values low overall → model not driven by outliers or high-leverage cases.

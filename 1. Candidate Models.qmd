@@ -1,0 +1,107 @@
+| Model | Included Interactions | Complexity           |
+| ----- | --------------------- | -------------------- |
+| **A** | alcohol, VA           | lowest               |
+| **B** | A + sugar + sulphates | moderate             |
+| **C** | B + pH                | high                 |
+| **D** | C + freeSO₂           | highest (reasonable) |
+
+# Model A
+👉 仅包含 strongest interactions。
+
+👉 模型简单、可解释性强，是教授最喜欢的 baseline。
+
+特点：
+
+interaction 数量 = 2
+
+hierarchical（包含所有 main effects）
+
+非常适合作为 baseline model
+```{r}
+mA <- lm(
+  quality ~ type +
+    alcohol + volatile_acidity_t + residual_sugar_t +
+    sulphates_t + pH + fixed_acidity + citric_acid +
+    free_sulfur_dioxide_t + total_sulfur_dioxide_t +
+    type:alcohol + type:volatile_acidity_t,
+  data = wine
+)
+```
+
+# Model B（Add Moderate Interactions）
+
+👉 加入两项 moderate 交互：residual sugar, sulphates
+👉 模型更灵活但未过度复杂
+
+特点：
+
+interaction 数量 = 4
+
+EDA 明确支持这些 interaction
+
+复杂度适中
+
+```{r}
+mB <-lm(
+  quality ~ type +
+    alcohol + volatile_acidity_t + residual_sugar_t +
+    sulphates_t + pH + fixed_acidity + citric_acid +
+    free_sulfur_dioxide_t + total_sulfur_dioxide_t +
+    type:alcohol + type:volatile_acidity_t +
+    type:residual_sugar_t + type:sulphates_t,
+  data = wine
+)
+```
+
+# Model C
+
+👉 包含所有 strong + moderate interactions + pH
+👉 不含弱且 collinearity 风险高的 SO₂ interactions
+
+特点：
+
+使用 type*(...) 保证 marginality
+
+全部 EDA 支持的 interactions 都包含
+
+适合作为 AIC/BIC 选择的上界模型
+```{r}
+mC <- lm(
+  quality ~ type *
+    (alcohol +
+     volatile_acidity_t +
+     residual_sugar_t +
+     sulphates_t +
+     pH) +
+    fixed_acidity + citric_acid +
+    free_sulfur_dioxide_t + total_sulfur_dioxide_t,
+  data = wine
+)
+```
+
+# Model D
+
+👉 加入 1 个 SO₂ interaction（根据 collinearity，不推荐两个都放）
+👉 完整测试所有 scientifically plausible interactions
+
+特点：
+
+这是 EDA 支持的 maximal model
+
+保守包含 type × free_SO₂，但保留 total_SO₂ 作为 main effect
+
+非常适合作为 ANOVA 的“最复杂模型”
+```{r}
+mD <- lm(
+  quality ~ type *
+    (alcohol +
+     volatile_acidity_t +
+     residual_sugar_t +
+     sulphates_t +
+     pH +
+     free_sulfur_dioxide_t) +
+    fixed_acidity + citric_acid +
+    total_sulfur_dioxide_t,
+  data = wine
+)
+```
