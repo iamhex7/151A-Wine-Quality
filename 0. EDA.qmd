@@ -1,16 +1,26 @@
 ---
 title: EDA
 format: typst
+fig-width: 10
+fig-height: 8
 execute:
   warning: false
   message: false
 ---
+
+
+## Goal
+- Examine distributions of variables, identify skewness, and determine whether transformation is needed.
+- Examine correlation structure to identify potential multicollinearity.
+- Compare distributions of chemical attributes between red and white wines to identify potential interactions.
+- Use scatterplots to assess the direction and strength of linear relationships.
 
 ```{r}
 # prep
 library(tidyverse)
 library(ggplot2)
 library(tidyr)
+library(corrplot)
 
 wine <- read_csv("data/wine.csv")
 wine <- wine |>
@@ -24,13 +34,20 @@ wine <- wine |>
 ```
 
 
-1. Histogram（每个化学特征的分布）
-Goal：
+## Histogram
 
-通过 histogram 观察每个化学变量的分布形态（skewness, outliers, long tail, multimodality），判断**是否需要进行 transformations**（如 log, sqrt），符合书中关于 transformation 的建议（右偏长尾 → log-transform）。
+For each chemical factors:
+
+skewness, outliers, long tail, multimodality -> transformations (log, sqrt)
+
+对 predictor 做 transformation 的目的只有三类：
+
+- 改善 predictor–response（quality）的线性关系
+- 减少 right‐skew → 减轻 heteroscedasticity
+- 改善 model interpretability（不影响科学解释）
 
 ```{r}
-# 仅选择数值型变量（排除 type）
+# only numerical variables, excluding types
 wine_numeric <- wine[, sapply(wine, is.numeric)]
 
 wine_long <- pivot_longer(wine_numeric,
@@ -45,37 +62,68 @@ ggplot(wine_long, aes(x = value)) +
   labs(title = "Histograms of Chemical Attributes")
 ```
 
-结论：
+### Conclusion
 
-| 变量                   | 是否需要 transform | 建议            |
-| -------------------- | -------------- | ------------- |
-| residual_sugar       | ⭐必须            | log(x + 0.1)  |
-| total_sulfur_dioxide | ⭐必须            | log(x + 1)    |
-| free_sulfur_dioxide  | ⭐必须            | log(x + 1)    |
-| chlorides            | ⭐推荐            | log(x)        |
-| volatile_acidity     | 推荐             | log(x)        |
-| sulphates            | 可选             | log(x)        |
-| citric_acid          | 可选             | log(x + 0.01) |
-| fixed_acidity        | 不需要            | 原样            |
-| pH                   | 不需要            | 原样            |
-| density              | 不需要            | 原样            |
-| alcohol              | 可能不需要          | 原样            |
-| quality              | 绝不能            | 原样            |
+| Variable              | Transformation Recommendation |
+|-----------------------|------------------------------|
+| residual_sugar        | log(x + 0.1)                 |
+| total_sulfur_dioxide  | log(x + 1)                   |
+| free_sulfur_dioxide   | log(x + 1)                   |
+| chlorides             | log(x)                       |
+| volatile_acidity      | log(x)                       |
+| sulphates             | log(x)                       |
+| citric_acid           | log(x + 0.01)                |
+| alcohol               | no transform                 |
+| fixed_acidity         | no transform                 |
+| density               | no transform (consider remove later) |
+| pH                    | no transform                 |
+| quality               | response, no transform       |
 
+
+
+### Transformation
 
 ```{r}
-wine$residual_sugar_t        <- log(wine$residual_sugar + 0.1)
-wine$free_sulfur_dioxide_t   <- log(wine$free_sulfur_dioxide + 1)
-wine$total_sulfur_dioxide_t  <- log(wine$total_sulfur_dioxide + 1)
-wine$chlorides_t             <- log(wine$chlorides)
-wine$volatile_acidity_t      <- log(wine$volatile_acidity)
-wine$sulphates_t             <- log(wine$sulphates)
+wine_tf <- data.frame(
+  # response
+  quality = wine$quality,
+  wine_type = wine$type,
+  
+  # transformed predictors
+  residual_sugar_t        = log(wine$residual_sugar + 0.1),
+  total_sulfur_dioxide_t  = log(wine$total_sulfur_dioxide + 1),
+  free_sulfur_dioxide_t   = log(wine$free_sulfur_dioxide + 1),
+  chlorides_t             = log(wine$chlorides),
+  volatile_acidity_t      = log(wine$volatile_acidity),
+  sulphates_t             = log(wine$sulphates),
+  citric_acid_t           = log(wine$citric_acid + 0.1),
+  
+  # raw predictors kept as-is
+  alcohol          = wine$alcohol,
+  fixed_acidity    = wine$fixed_acidity,
+  pH               = wine$pH,
+  density          = wine$density
+)
+
 ```
 
-2. Boxplots（按 wine type 查看分布差异）
-Goal：
+```{r}
+wine_tf_numeric <- wine_tf[, sapply(wine_tf, is.numeric)]
 
-比较 red 与 white wine 在各化学属性上的分布差异，帮助理解**哪些变量有 potential interaction with type** 的科学动机。
+wine_tf_long <- pivot_longer(wine_tf_numeric,
+                          cols = everything(),
+                          names_to = "variable",
+                          values_to = "value")
+
+ggplot(wine_tf_long, aes(x = value)) +
+  geom_histogram(bins = 30, fill = "skyblue", color = "white") +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw()
+```
+
+## Boxplot by Type
+
+Diffrence in red and white wine according to each predictor -> look for potential interaction with type
 
 ```{r}
 # Boxplot: chemical variable by type
@@ -92,69 +140,40 @@ ggplot(wine_long2, aes(x = type, y = value, fill = type)) +
        x = "Wine Type", y = "Value")
 ```
 
+### Conclusion
 
-结论：
+- residual_sugar * type
+- total_sulfur_dioxide * type
+- free_sulfur_dioxide * type
+- volatile_acidity * type
+- fixed_acidity * type
+- chlorides * type
 
-⭐⭐⭐ Strongest candidates (must justify)
 
-volatile_acidity
+## Correlation Heatmap
 
-free_sulfur_dioxide / total_sulfur_dioxide
-
-residual_sugar
-
-这些变量在 red 和 white 中的分布完全不同（不同量级），并且酿造科学给出强烈理由说明它们应当有不同的 quality impact。
-
-→ 这些 interaction 是最合理、最能打动教授的。
-
-⭐⭐ Moderate candidates (optional, but scientifically defensible)
-
-pH
-
-alcohol
-
-sulphates
-
-这些变量也可能有不同斜率，但差异不如前三显著。
-
-3. Correlation Heatmap（变量间相关性）
-Goal：
-
-理解 variables 之间的线性相关性结构，识别：
-
-**potential multicollinearity**（如 fixed acidity & pH）
-
-哪些变量可能对 quality 有 strongest marginal relationships
-
-⚠️ 注意：不是用来删变量！只用于理解数据结构。
+linear collinearity in between variables -> potential multicollinearity; strongest marginal relationships to quality
 
 ```{r}
-library(corrplot)
-
 corr_matrix <- cor(wine_numeric)   # numeric variables only
 corrplot(corr_matrix, method = "color", tl.cex = 0.8)
 ```
 
-Interpretation：
+### Conclusion
+保留两者但不要在同一模型中出现
+strong:
+- residual_sugar vs density
+- free_sulfur_dioxide vs total_sulfur_dioxide
+moderate:
+- fixed_acidity vs citric_acid
+- volatile_acidity vs citric_acid
+- sulphates vs total_sulfur_dioxide
+weak:
+- alcohol vs anything
+- pH vs anything
 
-高相关（|r| > 0.7） → multicollinearity risk，需要在拟合模型后检查 VIF（Fox 书强调 collinearity 的影响）。
 
-如果某些变量与 quality 有较强相关（如 alcohol） →
-这些变量值得在研究问题中重点讨论。
-
-如果两个变量强相关但意义不同（total sulfur dioxide vs free sulfur dioxide） →
-无需删除，但要谨慎解释。
-
-4. Scatterplots: Quality vs Each Predictor
-Goal：
-
-观察是否存在：
-
-线性趋势
-
-非线性趋势（可能需要 transform）
-
-明显的 slope 差异 → interaction 候选
+## Scatterplots: Quality vs Each Predictor
 
 ```{r}
 ggplot(wine_long2, aes(x = value, y = quality)) +
@@ -165,39 +184,19 @@ ggplot(wine_long2, aes(x = value, y = quality)) +
   labs(title = "Quality vs Chemical Attributes")
 ```
 
-Interpretation：
 
-若关系近似线性 → 线性模型合理
+## Quality vs Predictor by Wine Type
 
-若曲线弯曲（如 residual_sugar） → 后续可尝试 log-transform
-
-若点云无结构 → 该变量可能作用弱
-
-如果 slopes 在不同变量中差异很大 → 这些变量 likely important predictors
-
-5. Interaction Exploration: Quality vs Predictor by Wine Type
-Goal：
-
-这是你研究问题的核心：
-观察 red 与 white 的斜率差异，作为 type × variable interaction 的初步证据。
-
-这是教授明确希望你们做到的 “scientific context + motivation”。
+investigate on slope difference of red and white wine -> as potential proof for type × variable interaction 
 
 ```{r}
-predictors <- c(
-  "alcohol",
-  "chlorides", "chlorides_t",
-  "citric_acid",
-  "density",
-  "fixed_acidity",
-  "free_sulfur_dioxide", "free_sulfur_dioxide_t",
-  "total_sulfur_dioxide", "total_sulfur_dioxide_t",
-  "pH",
-  "sulphates", "sulphates_t",
-  "residual_sugar", "residual_sugar_t",
-  "volatile_acidity", "volatile_acidity_t"
-)
+# modified：只选择原始数据中的数值型化学变量，排除 quality 和 type
+predictors <- wine %>%
+  select(-quality, -type) %>%
+  select(where(is.numeric)) %>%
+  colnames()
 
+# modified：仅对上述 predictors 做 pivot_longer，不使用 transformed data
 wine_long <- wine %>%
   pivot_longer(
     cols = all_of(predictors),
@@ -218,21 +217,20 @@ ggplot(wine_long, aes(x = value, y = quality, color = type)) +
 
 ```
 
-Interpretation：
+### Conclusion
 
-如果两条回归线 明显非平行 →
-strong candidate for type × alcohol interaction
+Strong:
+- volatile_acidity * type
+- chlorides * type
+Moderate:
+- total_sulfur_dioxide * type
+- residual_sugar * type
+Weak:
+- citric_acid * type
+- sulphates * type
 
-如果两条线接近平行 →
-interaction 可能不显著，但 main effect 仍然重要
 
-若红白两类变量范围不同（e.g. sugar in white is much higher） →
-解释需要考虑这类 structural difference（科学背景）
-
-6. Quality Distribution by Type
-Goal：
-
-检查 red/white 的 quality 分布是否本质不同，帮助解释后续模型中 type 的意义。
+## Quality Distribution by Type
 
 ```{r}
 ggplot(wine, aes(x = quality, fill = type)) +
@@ -240,9 +238,3 @@ ggplot(wine, aes(x = quality, fill = type)) +
   theme_bw() +
   labs(title = "Distribution of Wine Quality by Type")
 ```
-
-Interpretation：
-
-若两类 wine 的 quality 分布显著不同 → type 作为 main effect 必须加入
-
-若白酒分布偏高 → 可能解释为什么某些化学特性在白酒中作用更强

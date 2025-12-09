@@ -1,3 +1,9 @@
+### Question
+
+After EDA any suggestions choosing candidate models? Like how do I apply steps we learnt into our case?
+
+Also when to delete outliers?
+
 | Model | Included Interactions | Complexity           |
 | ----- | --------------------- | -------------------- |
 | **A** | alcohol, VA           | lowest               |

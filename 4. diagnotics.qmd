@@ -4,7 +4,6 @@ library(ggfortify)
 autoplot(mD, which = 1)
 autoplot(mD, which = 2)
 autoplot(mD, which = 4:5)
-
 ```
 
 Model Diagnostics Summary (Bullet Points)

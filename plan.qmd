@@ -7,9 +7,10 @@ execute:
    message: false
 ---
 # RQ
-**How do key chemical attribute affect wine quality, and do these relationships differ between red and white wines in ways that are relevant to winemaking decisions?**
+**How do chemical attributes shape sensory wine quality, and do red and white wines respond differently in ways that inform winemaking decisions aimed at improving drinkability?**
 
 这个版本最符合：
+- quality = sensorial / human-taster rating from 0–10
 - project instruction
 - 统计建模要求（interactions, linear modeling theory）
 - 教授的三个主要批评（lack of context、too broad、motivation unclear）
