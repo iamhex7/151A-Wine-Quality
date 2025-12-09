@@ -87,7 +87,7 @@ ggplot(wine_long, aes(x = value)) +
 wine_tf <- data.frame(
   # response
   quality = wine$quality,
-  wine_type = wine$type,
+  type = wine$type,
   
   # transformed predictors
   residual_sugar_t        = log(wine$residual_sugar + 0.1),
