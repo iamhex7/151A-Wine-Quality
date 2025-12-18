@@ -46,6 +46,7 @@ skewness, outliers, long tail, multimodality -> transformations (log, sqrt)
 - 减少 right‐skew → 减轻 heteroscedasticity
 - 改善 model interpretability（不影响科学解释）
 
+这一步我们只看所有的numerical variable，通过只看x的分布histogram判断数据本身是否有skewness。如果有任何skewness的异常情况，我们在做具体分析时候对他们做transformation。
 ```{r}
 # only numerical variables, excluding types
 wine_numeric <- wine[, sapply(wine, is.numeric)]
@@ -64,7 +65,9 @@ ggplot(wine_long, aes(x = value)) +
 
 ### Conclusion
 
-| Variable              | Transformation Recommendation |
+这是我们通过上述histogram看出来的结论，表格中写了需要transform的variable都显示了一定程度的异常。
+
+| Variable              | Transformation |
 |-----------------------|------------------------------|
 | residual_sugar        | log(x + 0.1)                 |
 | total_sulfur_dioxide  | log(x + 1)                   |
@@ -82,6 +85,8 @@ ggplot(wine_long, aes(x = value)) +
 
 
 ### Transformation
+
+我们新建一个dataframe，将需要做transformation的变量全部transform，对于不需要transform的变量照常保留。
 
 ```{r}
 wine_tf <- data.frame(
@@ -107,6 +112,8 @@ wine_tf <- data.frame(
 
 ```
 
+现在再画个图检查，发现skewness解决很多了。
+
 ```{r}
 wine_tf_numeric <- wine_tf[, sapply(wine_tf, is.numeric)]
 
@@ -122,6 +129,8 @@ ggplot(wine_tf_long, aes(x = value)) +
 ```
 
 ## Boxplot by Type
+
+`type`是我们唯一一个categorical（binary）变量。我们画所有numerical variable在红酒&白酒上的box plot分布，每个变量都对照查看红白酒的不同反应。我们这样做以检查红白酒本身是否和其他变量有interaction。
 
 Diffrence in red and white wine according to each predictor -> look for potential interaction with type
 
@@ -142,6 +151,8 @@ ggplot(wine_long2, aes(x = type, y = value, fill = type)) +
 
 ### Conclusion
 
+根据boxplot看到，红白酒对于同一变量差异特别大的话能说明有潜在的interaction：
+
 - residual_sugar * type
 - total_sulfur_dioxide * type
 - free_sulfur_dioxide * type
@@ -152,6 +163,8 @@ ggplot(wine_long2, aes(x = type, y = value, fill = type)) +
 
 ## Correlation Heatmap
 
+我们算numerical variable互相之间的correlation coefficient，也就是对于每个变量，都做一次它与其他所有变量的regression，并且计算每个beta coefficient的回归系数，这个热力图里面深红色深蓝色都需要注意观察，代表强正相关或者强负相关；少数中等深度的蓝色也要注意，代表潜在的interaction。
+
 linear collinearity in between variables -> potential multicollinearity; strongest marginal relationships to quality
 
 ```{r}
@@ -160,7 +173,9 @@ corrplot(corr_matrix, method = "color", tl.cex = 0.8)
 ```
 
 ### Conclusion
-保留两者但不要在同一模型中出现
+我们找出了可能的一些interaction，从强烈/适中/弱 三个层面来看。
+我们在之后的candidate model design中，可以在每个模型中对于以下三种强度保留两者，但三种强度不要在同一模型中出现
+
 strong:
 - residual_sugar vs density
 - free_sulfur_dioxide vs total_sulfur_dioxide
@@ -175,6 +190,8 @@ weak:
 
 ## Scatterplots: Quality vs Each Predictor
 
+前面是单纯的看x的表现，现在看一下x和y之间的表现。我们画每个x单独和y的线性回归，看看分布和线条是否都正常。
+
 ```{r}
 ggplot(wine_long2, aes(x = value, y = quality)) +
   geom_point(alpha = 0.15) +
@@ -186,6 +203,8 @@ ggplot(wine_long2, aes(x = value, y = quality)) +
 
 
 ## Quality vs Predictor by Wine Type
+
+和上面一样的图，只不过这时候把红白酒分开看，再次检验潜在的interaction。
 
 investigate on slope difference of red and white wine -> as potential proof for type × variable interaction 
 
@@ -232,6 +251,7 @@ Weak:
 
 ## Quality Distribution by Type
 
+单独看quality和红白酒的关系，我们会发现白酒的数量远多于红酒。分数分布也更高。
 ```{r}
 ggplot(wine, aes(x = quality, fill = type)) +
   geom_histogram(position = "identity", alpha = 0.5, bins = 20) +

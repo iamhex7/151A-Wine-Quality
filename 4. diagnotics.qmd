@@ -1,3 +1,68 @@
+**这是我们的diagnotics，根据选出来的模型自己判断了一下它的各种特性以及数据是否有说服力。需要melody我们根据这个diagnotics，结合研究问题的语境提出一个结论，精辟地总结如何制酒更好喝**
+
+
+数据：
+
+```{r}
+# prep
+library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(corrplot)
+library(broom)
+library(purrr)
+
+wine <- read_csv("data/wine.csv")
+wine <- wine |>
+  mutate(
+    type = factor(
+      type,
+      levels = c(0, 1),
+      labels = c("red", "white")
+    )
+  )
+```
+```{r}
+wine_tf <- data.frame(
+  # response
+  quality = wine$quality,
+  type = wine$type,
+  
+  # transformed predictors
+  residual_sugar_t        = log(wine$residual_sugar + 0.1),
+  total_sulfur_dioxide_t  = log(wine$total_sulfur_dioxide + 1),
+  free_sulfur_dioxide_t   = log(wine$free_sulfur_dioxide + 1),
+  chlorides_t             = log(wine$chlorides),
+  volatile_acidity_t      = log(wine$volatile_acidity),
+  sulphates_t             = log(wine$sulphates),
+  citric_acid_t           = log(wine$citric_acid + 0.1),
+  
+  # raw predictors kept as-is
+  alcohol          = wine$alcohol,
+  fixed_acidity    = wine$fixed_acidity,
+  pH               = wine$pH,
+  density          = wine$density
+)
+
+```
+
+
+最终使用的model：
+
+```{r}
+mD <- lm(
+  quality ~ alcohol +
+    residual_sugar_t * type +
+    volatile_acidity_t * type +
+    chlorides_t * type +
+    total_sulfur_dioxide_t * type +
+    citric_acid_t * type +
+    sulphates_t * type +
+    fixed_acidity + pH,
+  data = wine_tf
+)
+```
+
 
 ```{r}
 library(ggfortify)
@@ -6,14 +71,15 @@ autoplot(mD, which = 2)
 autoplot(mD, which = 4:5)
 ```
 
-Model Diagnostics Summary (Bullet Points)
-Residuals vs Fitted
+# Hex 提供的diagnotics
+
+## Residuals vs Fitted
 
 No strong curvature → linearity assumption satisfied.
 
 Mild heteroscedasticity visible → expected due to discrete 1–10 quality ratings; not severe enough to affect inference.
 
-Normal Q–Q Plot
+## Normal Q–Q Plot
 
 Central residuals align well with theoretical normal quantiles.
 
@@ -21,7 +87,7 @@ Slight tail deviations → acceptable given large sample size (n > 6000) and CLT
 
 No evidence of severe non-normality.
 
-Cook’s Distance
+## Cook’s Distance
 
 All Cook’s D values are very small (< 0.03), far below conventional influence thresholds.
 
@@ -32,3 +98,95 @@ Residuals vs Leverage
 No points fall beyond Cook’s distance contours.
 
 Leverage values low overall → model not driven by outliers or high-leverage cases.
+
+# Martin提供的diagnotics
+
+```{r}
+
+# Standard diagnostic panel
+par(mfrow = c(2, 2))
+plot(mD)
+par(mfrow = c(1, 1))
+
+ 
+# Residuals vs Fitted
+plot(
+  fitted(mD), resid(mD),
+  pch = 20, col = "darkred",
+  xlab = "Fitted values",
+  ylab = "Residuals",
+  main = "Residuals vs Fitted"
+)
+abline(h = 0, col = "blue", lwd = 2)
+
+ 
+# QQ Plot
+qqnorm(resid(mD), pch = 20, col = "darkgreen",
+       main = "Normal Q-Q Plot")
+qqline(resid(mD), col = "blue", lwd = 2)
+
+ 
+# Scale–Location plot
+plot(
+  fitted(mD), sqrt(abs(resid(mD))),
+  pch = 20, col = "purple",
+  xlab = "Fitted values",
+  ylab = "√|Residuals|",
+  main = "Scale–Location"
+)
+
+ 
+# Cook's Distance
+cook <- cooks.distance(mD)
+n <- length(cook)
+cook_cut <- 4 / n
+
+plot(
+  cook, type = "h",
+  col = "darkorange",
+  main = "Cook's Distance",
+  ylab = "Cook's Distance"
+)
+abline(h = cook_cut, col = "red", lty = 2)
+
+which(cook > cook_cut)
+
+ 
+# Leverage (hat values)
+lev <- hatvalues(mD)
+p <- length(coef(mD)) - 1
+lev_cut <- 2 * (p + 1) / n
+
+plot(
+  lev, type = "h",
+  col = "brown",
+  main = "Leverage Values",
+  ylab = "Leverage"
+)
+abline(h = lev_cut, col = "red", lty = 2)
+
+which(lev > lev_cut)
+
+ 
+# Influence plot (optional but strong)
+influencePlot(
+  mD,
+  main = "Influence Plot (Cook's D vs Leverage)",
+  sub = "Bubble size ∝ Cook's Distance"
+)
+
+
+```
+
+
+Diagnostic plots for Model D indicate mild deviations from linear model assumptions.
+Residuals exhibit discrete banding due to the integer-valued response variable and display mild non-normality in the tails. The Breusch–Pagan test strongly rejects homoskedasticity, suggesting heteroskedastic errors. However, influence diagnostics reveal no single observation with excessive leverage or Cook’s distance. Given the large sample size, inference remains reliable, and heteroskedasticity-robust standard errors are employed.
+
+```{r}
+library(sandwich)
+coeftest(mD, vcov = vcovHC(mD, type = "HC3"))
+```
+
+Table X reports heteroskedasticity-robust (HC3) standard errors for Model D.
+
+Alcohol content exhibits a strong positive association with wine quality, while volatile acidity, chlorides, and sulfur dioxide negatively affect quality. Sulphates significantly improve quality, particularly for red wines. Several interaction terms are statistically significant, indicating that the marginal effects of volatile acidity, sulfur dioxide, and sulphates differ meaningfully between red and white wines. These results confirm the presence of type-specific chemical sensitivities and justify the inclusion of interaction terms in Model D.
