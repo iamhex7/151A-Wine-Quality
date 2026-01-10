@@ -1,41 +1,46 @@
 # Wine Quality Analysis: A Physicochemical Perspective
 
 ## Overview
-This project investigates the relationship between the physicochemical properties of red and white wines and their perceived quality ratings. [cite_start]Using a dataset of over 6,000 observations from the UC Irvine Machine Learning Repository [cite: 8, 38][cite_start], I developed a series of linear regression models to identify key quality drivers and explore how these relationships differ between wine types[cite: 7, 9].
+This project investigates the relationship between the physicochemical properties of red and white wines and their perceived quality ratings. Using a dataset of over 6,000 observations from the UC Irvine Machine Learning Repository, I developed a series of linear regression models to identify key quality drivers and explore how these relationships differ between wine types.
 
 ## Research Questions
-* [cite_start]Which physicochemical properties are most strongly related to wine quality? [cite: 9]
-* [cite_start]Are there systematic differences in these relationships between red and white wines? [cite: 10]
+* Which physicochemical properties are most strongly related to wine quality?
+* Are there systematic differences in these relationships between red and white wines?
 
 ## Methodology
-### Data Processing and EDA
-* [cite_start]**Skewness Correction:** Variables such as residual sugar, chlorides, and sulfur dioxide exhibited significant right-skewness and were log-transformed to stabilize variance and improve linearity[cite: 14, 15, 31].
-* [cite_start]**Feature Engineering:** Analysis of distributions revealed that red and white wines often follow different chemical profiles, prompting the inclusion of interaction terms between wine type and chemical predictors[cite: 16, 20].
+
+### Data Processing and Exploratory Data Analysis
+* **Variable Transformation:** Analysis revealed that predictors such as residual sugar, chlorides, sulfur dioxide, sulfates, and volatile acidity exhibited significant right-skewed distributions. These were log-transformed to stabilize variance and improve linearity.
+* **Wine Type Stratification:** Exploratory data analysis showed differences in the distribution of several predictors between red and white wines, indicating potential interactions between wine type and chemical variables.
+
+
 
 ### Model Specification
-[cite_start]The final model (Model D) was selected based on a systematic comparison of AIC, BIC, and adjusted R-squared values[cite: 23]. [cite_start]This model balances explanatory power with interpretability[cite: 24].
+The final model was selected based on a systematic comparison of adjusted R-squared, AIC, and BIC. The selected model includes interaction terms that allow the effect of specific chemical properties to vary by wine type, balancing explanatory power with interpretability.
 
-**The Final Regression Equation:**
-$$quality = \beta_0 + \beta_1 alcohol + \beta_2 \log(sugar) + \dots + \beta_k (\log(predictor) \times type_{white}) + \epsilon$$
-[cite_start][cite: 27, 28, 30]
+**Model Formulation:**
+The final regression model relates wine quality to alcohol content, fixed acidity, pH, and the log-transformed versions of residual sugar, volatile acidity, chlorides, total sulfur dioxide, citric acid, and sulphates, along with their interactions with wine type.
 
 ### Model Diagnostics and Robustness
-* [cite_start]**Linearity:** Residual plots confirmed that the linear approximation was reasonable[cite: 37].
-* [cite_start]**Normality:** Q-Q plots showed slight deviations in the tails but were deemed acceptable given the large sample size[cite: 38].
-* [cite_start]**Homoscedasticity:** Scale-location plots indicated moderate heteroscedasticity[cite: 39]. [cite_start]This was addressed by conducting inference using heteroscedasticity-robust (HC3) standard errors[cite: 40].
-* [cite_start]**Influence:** Cook's distance and leverage diagnostics confirmed no observations exerted undue influence on the model[cite: 41].
+* **Linearity:** Residual plots confirmed that the linear approximation was reasonable with no apparent systematic patterns between residuals and fitted values.
+* **Normality:** The normal Q-Q plot showed slight deviations in the tails, which were considered acceptable given the large sample size of over 6,000 observations.
+* **Homoscedasticity:** Scale-location plots indicated a moderate degree of heteroscedasticity. To ensure valid inference, the analysis was conducted using heteroscedasticity-robust (HC3) standard errors.
+* **Influence:** Cook's distance and leverage diagnostics confirmed that no observations exerted undue influence on the fitted model.
+
+
 
 ## Main Findings
-* [cite_start]**Alcohol:** Alcohol content is the most significant positive predictor of wine quality[cite: 45, 57].
-* [cite_start]**Acidity:** Quality is strongly associated with acidity-related measures[cite: 57].
-* [cite_start]**Interaction Effects:** Red and white wines respond differently to chemical attributes[cite: 46]. [cite_start]Specifically, the impact of residual sugar, volatile acidity, sulfur dioxide, and sulfates varies significantly depending on the wine type[cite: 47, 48].
+* **Alcohol:** Alcohol content is the strongest positive predictor of wine quality, consistent with empirical wine science findings.
+* **Interaction Effects:** Significant interaction effects were observed for residual sugar, volatile acidity, sulfur dioxide, and sulfates, indicating that red and white wines respond differently to these chemical attributes.
+* **Predictive Power:** The inclusion of interaction terms significantly improved model fit compared to baseline pooled models, as evidenced by lower AIC and higher adjusted R-squared values.
 
 ## Tools Used
-* Language: R
-* Libraries: tidyverse, broom, ggfortify, car, sandwich, lmtest
+* **Language:** R
+* **Libraries:** tidyverse (ggplot2, dplyr, tidyr, purrr, stringr), broom, ggfortify, sandwich, lmtest
+* **Techniques:** Ordinary Least Squares (OLS), Feature Transformation, Interaction Modeling, HC3 Robust Standard Errors, Model Diagnostics (Cook's D, Leverage, Q-Q Plots)
 
 ## License and Terms of Use
-Copyright (c) 2025 Hex Wu, Jingzhi Zhang, Martin Yang. [cite_start]All rights reserved. [cite: 3]
+Copyright 2025 Hex Wu, Jingzhi Zhang, Martin Yang. All rights reserved.
 
 **Important Notice:**
 This project is shared for portfolio and demonstration purposes only. Under no circumstances may this work, its text, code, or results be plagiarized, copied, or cited without explicit written permission from the authors.
